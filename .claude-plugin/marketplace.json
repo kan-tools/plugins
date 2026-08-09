@@ -1,0 +1,49 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "kan-tools",
+  "description": "Plugins from the kan-tools projects: a memory substrate and the process layer that sits on it.",
+  "owner": {
+    "name": "kan-tools",
+    "url": "https://github.com/kan-tools"
+  },
+  "plugins": [
+    {
+      "name": "kan",
+      "description": "Local-first, provenance-preserving memory substrate for AI agents. Ships the kan MCP server; no commands or hooks of its own.",
+      "homepage": "https://github.com/kan-tools/kan",
+      "repository": "https://github.com/kan-tools/kan",
+      "license": "MIT",
+      "keywords": [
+        "memory",
+        "provenance",
+        "claims",
+        "mcp"
+      ],
+      "source": {
+        "source": "url",
+        "url": "https://github.com/kan-tools/kan.git",
+        "ref": "v0.11.0-beta.1",
+        "sha": "f2fe303a02e822706ee3bdadfbf700bdd0bceb32"
+      }
+    },
+    {
+      "name": "day",
+      "description": "Structured process layer for AI-assisted development: teloi, composable process atoms, and drift assessment, all recorded in kan. Ships the /design, /adversarial-review, /handoff, /wakeup and /witness-interview commands, plus SessionStart and UserPromptSubmit hooks.",
+      "homepage": "https://github.com/kan-tools/day",
+      "repository": "https://github.com/kan-tools/day",
+      "license": "MIT",
+      "keywords": [
+        "process",
+        "telos",
+        "drift",
+        "mcp"
+      ],
+      "source": {
+        "source": "url",
+        "url": "https://github.com/kan-tools/day.git",
+        "ref": "v0.12.0-beta.1",
+        "sha": "28599cf98e5b17317e1210897fdb2a8badea854e"
+      }
+    }
+  ]
+}

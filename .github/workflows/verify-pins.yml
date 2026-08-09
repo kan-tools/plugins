@@ -1,0 +1,33 @@
+name: verify-pins
+
+# Re-derives every `sha` in marketplace.json from its `ref` against the real
+# remotes. A pin is the one field here that can be wrong while looking right:
+# `git ls-remote --tags` prints the tag OBJECT for an annotated tag, and day's
+# tags are annotated while kan's are not, so the same command yields a correct
+# pin for one and a non-commit for the other (kan-tools/day#157).
+#
+# This runs on every push and PR rather than on a schedule. A scheduled run
+# would also catch a tag deleted or force-pushed upstream, but it would report a
+# transient network failure as a red repo on a day nobody changed anything --
+# and a check that cries wolf gets ignored, which is worse than not having it.
+# The pin is only ever wrong as a *result of an edit here*, so edits are when to
+# look.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Re-derive every pin from its ref
+        # Exit 1 means a pin is wrong; exit 2 means a remote could not be read
+        # and the check did not complete. Both fail the job -- Actions has no
+        # third state -- but the log says which, and they must never be
+        # conflated in the script itself.
+        run: python3 scripts/pin.py --check
