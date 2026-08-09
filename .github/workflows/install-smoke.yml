@@ -58,7 +58,13 @@ jobs:
         # The local path, not kan-tools/plugins: a PR must be checked as it
         # stands, not as main stands. A job that added the published repo would
         # pass while the change under review was broken.
-        run: claude plugin marketplace add . --scope local
+        #
+        # An ABSOLUTE path. A bare `.` is rejected -- "Invalid marketplace source
+        # format. Try: owner/repo, https://..., or ./path" -- which the local
+        # rehearsal missed, because it was run against an absolute path while the
+        # workflow said `.`. Rehearsing a near-neighbour of the command under test
+        # is not rehearsing the command.
+        run: claude plugin marketplace add "$GITHUB_WORKSPACE" --scope local
 
       - name: Install every plugin the manifest lists
         # Derived from the manifest rather than listed here, so an entry added
