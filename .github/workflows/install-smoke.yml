@@ -101,11 +101,21 @@ jobs:
         # to avoid that, and this asserts the property rather than the setting.
         run: |
           set -euo pipefail
+          seen=0
           for d in "$HOME"/.claude/plugins/cache/kan-tools/*/*; do
             [ -d "$d" ] || continue
+            seen=$((seen + 1))
             if [ -d "$d/target" ]; then
               echo "::error::$d carries a target/ tree; the source is copying the working directory"
               exit 1
             fi
             echo "$d  $(du -sh "$d" | cut -f1)"
           done
+          # Without this the check is vacuous the moment the cache path moves:
+          # the glob matches nothing, the loop body never runs, and a step that
+          # inspected zero directories reports the same green as one that
+          # inspected two. "Could not check" must never read as "checked and
+          # clean" -- and a glob that silently matches nothing is the cheapest
+          # way to get that wrong.
+          [ "$seen" -gt 0 ] || { echo "::error::inspected no plugin directories; the cache path has moved"; exit 1; }
+          echo "inspected $seen plugin director(ies)"
