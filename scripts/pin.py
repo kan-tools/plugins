@@ -68,6 +68,60 @@ def remote_url(source: dict) -> str:
     return source["url"]
 
 
+def version_key(tag: str) -> tuple | None:
+    """Sort key for a `vX.Y.Z` or `vX.Y.Z-pre` tag, or None if it is not one.
+
+    A RELEASE SORTS ABOVE ITS OWN PRE-RELEASES, which plain string order gets
+    backwards: `v0.12.0` is newer than `v0.12.0-beta.2`, but sorts before it
+    lexically. Both kan-tools crates have shipped only pre-releases so far, so
+    this is exactly the path that is never exercised here until the day it
+    matters -- the failure shape `CLAUDE.md` records for a mechanism with two
+    modes, tested in whichever mode the repo happens to be in.
+
+    Pre-release ordering is deliberately shallow: `beta.2` after `beta.10` is
+    wrong under semver, and correcting it means a component-wise comparison this
+    does not need, because the tag it picks is checked by a human on a PR before
+    it lands. Shallow and predictable beats subtly clever.
+    """
+    if not tag.startswith("v"):
+        return None
+    core, _, pre = tag[1:].partition("-")
+    parts = core.split(".")
+    if len(parts) != 3 or not all(p.isdigit() for p in parts):
+        return None
+    # `1` for a final release, `0` for a pre-release, so a release wins a tie.
+    return (tuple(int(p) for p in parts), 1 if not pre else 0, pre)
+
+
+def newest_tag(url: str) -> str | None:
+    """The highest `v*` tag on `url`, or None when it has none.
+
+    Raises OSError when the remote is unreachable, keeping "no tags" and "could
+    not ask" distinguishable the same way `resolve` does.
+    """
+    proc = subprocess.run(
+        ["git", "ls-remote", "--tags", "--refs", url],
+        capture_output=True,
+        text=True,
+        env={"GIT_TERMINAL_PROMPT": "0", "PATH": "/usr/bin:/bin:/usr/local/bin"},
+    )
+    if proc.returncode != 0:
+        raise OSError(proc.stderr.strip() or f"git ls-remote exited {proc.returncode}")
+
+    # `--refs` drops the `^{}` peeled lines, so each tag appears exactly once
+    # here. Peeling is `resolve`'s job and stays there.
+    tags = []
+    for line in proc.stdout.splitlines():
+        _, _, name = line.partition("\t")
+        tag = name.strip().removeprefix("refs/tags/")
+        key = version_key(tag)
+        if key is not None:
+            tags.append((key, tag))
+    if not tags:
+        return None
+    return max(tags)[1]
+
+
 def resolve(url: str, ref: str) -> tuple[str | None, str | None]:
     """Return (commit, tag_object) for `ref` on `url`.
 
@@ -107,7 +161,20 @@ def resolve(url: str, ref: str) -> tuple[str | None, str | None]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="verify pins without writing (CI mode)")
+    ap.add_argument(
+        "--latest",
+        action="store_true",
+        help="first move every `ref` to the newest v* tag on its remote, then derive shas",
+    )
     args = ap.parse_args()
+
+    if args.latest and args.check:
+        # These ask opposite questions -- one rewrites the manifest, the other
+        # asserts it is already right -- and a combination that silently
+        # honoured only one of them is how a CI job ends up green for the wrong
+        # reason.
+        print("--latest rewrites the manifest and --check refuses to; pick one.", file=sys.stderr)
+        return 1
 
     manifest = json.loads(MANIFEST.read_text())
     problems = 0
@@ -120,13 +187,31 @@ def main() -> int:
 
         if not isinstance(source, dict) or source.get("source") not in GIT_SOURCES:
             continue
+
+        url = remote_url(source)
+
+        if args.latest:
+            try:
+                newest = newest_tag(url)
+            except OSError as exc:
+                print(f"{name:12} UNREACHABLE  {url}: {exc}")
+                unreachable += 1
+                continue
+            if newest is None:
+                print(f"{name:12} NO-SUCH-REF  {url} publishes no v* tags to track")
+                problems += 1
+                continue
+            if newest != source.get("ref"):
+                print(f"{name:12} RETARGET     {source.get('ref')} -> {newest}")
+                source["ref"] = newest
+                changed = True
+
         ref = source.get("ref")
         if not ref:
             print(f"{name:12} UNPINNED     no `ref`, so nothing to derive a sha from")
             problems += 1
             continue
 
-        url = remote_url(source)
         try:
             commit, tag_object = resolve(url, ref)
         except OSError as exc:

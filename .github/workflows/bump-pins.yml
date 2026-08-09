@@ -1,0 +1,97 @@
+name: bump-pins
+
+# CD for the catalog: notice a new day or kan release and open a PR moving the
+# pin to it.
+#
+# WHY THIS EXISTS. day's own `scripts/cut-release.sh` was written because two
+# releases shipped with no `release` claim, and the debrief found the cause was
+# not carelessness: "what was mechanized got done; what was ritual got dropped."
+# Pinning this catalog forward is exactly that shape again, one repo over -- a
+# separate step, in a different repository, with nothing enforcing it. Left
+# manual it would be dropped for the same reason, at the same moment: when the
+# release cadence compresses.
+#
+# WHY A SCHEDULED POLL RATHER THAN A DISPATCH FROM day. A `repository_dispatch`
+# fired by day's release would be more immediate, but needs a cross-repo PAT
+# stored in day: a standing credential that can write here, for an event that
+# happens a few times a month. Reading public tags needs no credential at all,
+# and the built-in GITHUB_TOKEN can open a pull request in its own repository.
+# The cost is latency measured in hours, on a catalog whose entries are pinned
+# precisely so nothing moves under users.
+#
+# WHY IT OPENS A PR RATHER THAN COMMITTING. Which release is ready to be the one
+# strangers install is a judgement, not a fact -- a beta may be tagged and not
+# meant for the catalog. The PR is where `verify-pins` and `install-smoke` run,
+# so the bump arrives already checked, and a human clicks. This nags; it does
+# not decide.
+#
+# NOT a substitute for `verify-pins.yml`. That asserts the committed pins are
+# right; this proposes new ones. A single workflow doing both would be unable to
+# fail in the way either one exists to fail.
+
+on:
+  schedule:
+    # 09:00 UTC daily. Nothing here is urgent -- the catalog is pinned, so a day
+    # of latency changes nothing for anyone already installed.
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Move every ref to the newest tag and re-derive its sha
+        id: bump
+        # Exit 1 means an entry needs attention; exit 2 means a remote could not
+        # be read. Both stop the job before a PR is opened -- proposing a bump
+        # derived from a partial answer is worse than proposing none.
+        run: python3 scripts/pin.py --latest
+
+      - name: Is there anything to propose?
+        id: changed
+        run: |
+          if git diff --quiet -- .claude-plugin/marketplace.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Every entry is already at its newest tag."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff -- .claude-plugin/marketplace.json
+          fi
+
+      - name: Open (or update) the bump PR
+        if: steps.changed.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bump-pins
+          # One long-lived branch, updated in place: a second run before the
+          # first PR merges should revise that PR, not open a rival one.
+          title: "Move the catalog pins to the newest released tags"
+          commit-message: |
+            Move the catalog pins to the newest released tags
+
+            Opened by .github/workflows/bump-pins.yml. Every `sha` here was
+            derived by scripts/pin.py from the `ref` above it, never pasted --
+            `git ls-remote --tags` prints the tag OBJECT for an annotated tag,
+            and day's tags are annotated while kan's are not.
+          body: |
+            `scripts/pin.py --latest` found a newer tag for at least one entry.
+
+            Both checks on this PR are the point of it:
+
+            - **verify-pins** re-derives every `sha` from its `ref`, and reports
+              `TAG-OBJECT` distinctly — the failure that is invisible on
+              inspection, since a tag object and a commit are both forty hex
+              characters.
+            - **install-smoke** installs each plugin from this manifest and
+              asserts its components resolve, so a pin at a commit that predates
+              a component fails here rather than for a stranger.
+
+            Merging is a judgement: a tag existing does not mean it is the
+            release strangers should install.
+          labels: catalog

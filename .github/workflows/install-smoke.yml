@@ -1,0 +1,105 @@
+name: install-smoke
+
+# Does a plugin in this catalog actually install, and do its components resolve?
+#
+# WHAT THIS CATCHES THAT NOTHING ELSE DOES. `verify-pins` proves a sha is the
+# commit its ref names. `claude plugin validate` proves the manifest is
+# well-formed. Neither opens the plugin. A pin at a commit that predates a
+# component, a renamed command file, a hooks.json that parses but registers
+# nothing -- all of those pass both checks and fail for a stranger running
+# `/plugin install`. This was done by hand once, on the day the catalog was
+# built, and nothing repeated it.
+#
+# WHAT IS ASSERTED, AND WHY NOT COUNTS. An exact skill count would be a
+# hand-written number that goes stale at every release, and `bump-pins` opens
+# those PRs automatically -- so the number nobody re-derives would be wrong
+# exactly when nobody is looking. What is asserted instead are the structural
+# facts day's own test suite treats as invariants: both hooks registered, the
+# MCP server present, at least one skill. Those hold across releases; a count
+# does not.
+#
+# UNVERIFIED AS OF THE FIRST RUN: whether `claude plugin` needs credentials on a
+# bare runner. Every command used here is local git and file work -- clone,
+# read, resolve -- so it should not, but that is a claim about someone else's
+# tool and this comment is not evidence. The first run decides it. If it turns
+# out auth is required, this needs a secret and the honest fix is to say so
+# here rather than to quietly narrow what the job checks.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      # Both, deliberately. A plugin that resolves on Linux and not macOS is a
+      # real failure mode, and `fail-fast: false` means one broken platform does
+      # not hide the other's result.
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install the Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate the marketplace manifest
+        run: claude plugin validate . --strict
+
+      - name: Add this checkout as a marketplace
+        # The local path, not kan-tools/plugins: a PR must be checked as it
+        # stands, not as main stands. A job that added the published repo would
+        # pass while the change under review was broken.
+        run: claude plugin marketplace add . --scope local
+
+      - name: Install every plugin the manifest lists
+        # Derived from the manifest rather than listed here, so an entry added
+        # without a smoke test cannot exist.
+        run: |
+          set -euo pipefail
+          names=$(python3 -c "import json;print(' '.join(p['name'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']))")
+          echo "manifest lists: $names"
+          for n in $names; do
+            echo "::group::install $n"
+            claude plugin install "$n@kan-tools" --scope local
+            echo "::endgroup::"
+          done
+
+      - name: day resolves its hooks, its MCP server, and at least one skill
+        run: |
+          set -euo pipefail
+          claude plugin details day@kan-tools | tee day.txt
+          grep -q "SessionStart"      day.txt || { echo "::error::day did not register SessionStart"; exit 1; }
+          grep -q "UserPromptSubmit"  day.txt || { echo "::error::day did not register UserPromptSubmit"; exit 1; }
+          grep -qE "MCP servers \([1-9]" day.txt || { echo "::error::day resolved no MCP server"; exit 1; }
+          grep -qE "Skills \([1-9]"      day.txt || { echo "::error::day resolved no skills"; exit 1; }
+
+      - name: kan resolves its MCP server
+        run: |
+          set -euo pipefail
+          claude plugin details kan@kan-tools | tee kan.txt
+          grep -qE "MCP servers \([1-9]" kan.txt || { echo "::error::kan resolved no MCP server"; exit 1; }
+
+      - name: The checkout carries no build tree
+        # A `./relative` source copies the working directory instead of cloning
+        # tracked files, which drags day's cargo target/ along -- 22 GB, at which
+        # point the installer gives up. The manifest uses git sources precisely
+        # to avoid that, and this asserts the property rather than the setting.
+        run: |
+          set -euo pipefail
+          for d in "$HOME"/.claude/plugins/cache/kan-tools/*/*; do
+            [ -d "$d" ] || continue
+            if [ -d "$d/target" ]; then
+              echo "::error::$d carries a target/ tree; the source is copying the working directory"
+              exit 1
+            fi
+            echo "$d  $(du -sh "$d" | cut -f1)"
+          done
