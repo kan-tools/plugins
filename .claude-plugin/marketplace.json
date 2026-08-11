@@ -22,13 +22,13 @@
       "source": {
         "source": "url",
         "url": "https://github.com/kan-tools/kan.git",
-        "ref": "v0.11.0-beta.1",
-        "sha": "f2fe303a02e822706ee3bdadfbf700bdd0bceb32"
+        "ref": "v0.12.0-beta.2",
+        "sha": "d1d43db9e02a7cd2714d7749f272f728c816c23b"
       }
     },
     {
       "name": "day",
-      "description": "Structured process layer for AI-assisted development: teloi, composable process atoms, and drift assessment, all recorded in kan. Ships the /design, /adversarial-review, /handoff, /wakeup and /witness-interview commands, plus SessionStart and UserPromptSubmit hooks.",
+      "description": "Structured process layer for AI-assisted development: teloi, composable process atoms, and drift assessment, all recorded in kan. Ships the design, adversarial-review, handoff, wakeup and witness-interview skills, plus SessionStart and UserPromptSubmit hooks.",
       "homepage": "https://github.com/kan-tools/day",
       "repository": "https://github.com/kan-tools/day",
       "license": "MIT",
@@ -41,8 +41,8 @@
       "source": {
         "source": "url",
         "url": "https://github.com/kan-tools/day.git",
-        "ref": "v0.12.0-beta.1",
-        "sha": "28599cf98e5b17317e1210897fdb2a8badea854e"
+        "ref": "v0.12.0-beta.3",
+        "sha": "7ea01126caf05eee325a51eb5bf7edbcb86dea06"
       }
     }
   ]
