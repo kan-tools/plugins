@@ -44,6 +44,25 @@
         "ref": "v0.12.0-beta.3",
         "sha": "7ea01126caf05eee325a51eb5bf7edbcb86dea06"
       }
+    },
+    {
+      "name": "cospan",
+      "description": "Apex viewer for AI-driven development: one live TUI that folds many local agent sessions, files, and kan claims into a single view, over a drift-tracking comment layer on the code. Ships the cospan-comments MCP server (agents read and write the comment layer) and a bootstrap hook.",
+      "homepage": "https://github.com/kan-tools/cospan",
+      "repository": "https://github.com/kan-tools/cospan",
+      "license": "MIT OR Apache-2.0",
+      "keywords": [
+        "viewer",
+        "comments",
+        "observability",
+        "mcp"
+      ],
+      "source": {
+        "source": "url",
+        "url": "https://github.com/kan-tools/cospan.git",
+        "ref": "v0.0.1-alpha.17",
+        "sha": "7fecfbab64c8776dbf70d39875c832c94fcacfd4"
+      }
     }
   ]
 }
