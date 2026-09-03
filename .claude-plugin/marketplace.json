@@ -60,8 +60,8 @@
       "source": {
         "source": "url",
         "url": "https://github.com/kan-tools/cospan.git",
-        "ref": "v0.0.1-alpha.25",
-        "sha": "42f83f941b74fcae89ae5bf8ff4920e78bb1becf"
+        "ref": "v0.0.1-alpha.26",
+        "sha": "0eb16eb3a7d7a6e77e4ced0401594bd675280c58"
       }
     }
   ]
