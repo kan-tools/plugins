@@ -22,8 +22,8 @@
       "source": {
         "source": "url",
         "url": "https://github.com/kan-tools/kan.git",
-        "ref": "v0.12.0-beta.2",
-        "sha": "d1d43db9e02a7cd2714d7749f272f728c816c23b"
+        "ref": "v1.0.0-beta.1",
+        "sha": "7112e37d539c0a647e02dfc7474017a7233b2eb5"
       }
     },
     {
@@ -41,8 +41,8 @@
       "source": {
         "source": "url",
         "url": "https://github.com/kan-tools/day.git",
-        "ref": "v0.12.0-beta.3",
-        "sha": "7ea01126caf05eee325a51eb5bf7edbcb86dea06"
+        "ref": "v0.13.0-beta.1",
+        "sha": "a220c01d518a8ebba665f9e4f20456c06149f721"
       }
     },
     {
@@ -60,8 +60,8 @@
       "source": {
         "source": "url",
         "url": "https://github.com/kan-tools/cospan.git",
-        "ref": "v0.0.1-alpha.29",
-        "sha": "8c5509d9a4925e7aec9928e9738c29aae1fb7ebe"
+        "ref": "v0.0.1-alpha.9",
+        "sha": "302ba3db91f8bee23e922bd31fe7994f7bccd9a4"
       }
     }
   ]
